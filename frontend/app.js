@@ -24,6 +24,7 @@ const el = {
   appScreen: document.getElementById("app-screen"),
   authError: document.getElementById("auth-error"),
   devLoginBtn: document.getElementById("dev-login-btn"),
+  googleLoginBtn: document.getElementById("google-login-btn"),
 
   userAvatar: document.getElementById("user-avatar"),
   userName: document.getElementById("user-name"),
@@ -93,13 +94,37 @@ const el = {
 window.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   checkEnvironment();
-
+  
   if (state.token && state.user) {
     showAppScreen();
     fetchClaims();
   } else {
     showAuthScreen();
-    initGoogleOAuth();
+    
+    // Check if Google GSI library is already loaded
+    if (typeof google !== "undefined" && google.accounts) {
+      initGoogleOAuth();
+    } else {
+      // Set onload handler for Google SDK
+      window.onGoogleLibraryLoad = () => {
+        initGoogleOAuth();
+      };
+      
+      // Fallback: poll every 100ms for 3 seconds
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (typeof google !== "undefined" && google.accounts) {
+          clearInterval(interval);
+          initGoogleOAuth();
+        } else if (attempts > 30) {
+          clearInterval(interval);
+          console.error("Google SDK failed to load within timeout");
+          el.authError.innerText = "Error loading Google Sign-In. Check internet connection.";
+          el.authError.classList.remove("hidden");
+        }
+      }, 100);
+    }
   }
 });
 
