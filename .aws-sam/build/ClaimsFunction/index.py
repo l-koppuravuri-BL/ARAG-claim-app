@@ -63,6 +63,7 @@ def handler(event, context):
         return send_response(401, {"error": str(e)})
 
     user_id = user["userId"]
+    tenant_id = user["tenantId"]
 
     # Extract ID parameter from pathParameters or parse path
     path_parameters = event.get("pathParameters") or {}
@@ -77,12 +78,12 @@ def handler(event, context):
     try:
         # GET /claims
         if method == "GET" and (event_path == "/claims" or event_path.endswith("/claims")):
-            claims_list = claims.list_claims(user_id)
+            claims_list = claims.list_claims(tenant_id)
             return send_response(200, claims_list)
 
         # GET /claims/{id}
         elif method == "GET" and claim_id:
-            claim = claims.get_claim(user_id, claim_id)
+            claim = claims.get_claim(tenant_id, claim_id)
             if not claim:
                 return send_response(404, {"error": "Claim not found"})
             return send_response(200, claim)
@@ -91,19 +92,21 @@ def handler(event, context):
         elif method == "POST" and (event_path == "/claims" or event_path.endswith("/claims")):
             body_str = event.get("body", "{}")
             body = json.loads(body_str) if body_str else {}
-            new_claim = claims.create_claim(user_id, body)
+            body["createdBy"] = user_id
+            new_claim = claims.create_claim(tenant_id, body)
             return send_response(201, new_claim)
 
         # PUT /claims/{id}
         elif method == "PUT" and claim_id:
             body_str = event.get("body", "{}")
             body = json.loads(body_str) if body_str else {}
-            updated_claim = claims.update_claim(user_id, claim_id, body)
+            body["updatedBy"] = user_id
+            updated_claim = claims.update_claim(tenant_id, claim_id, body)
             return send_response(200, updated_claim)
 
         # DELETE /claims/{id}
         elif method == "DELETE" and claim_id:
-            claims.delete_claim(user_id, claim_id)
+            claims.delete_claim(tenant_id, claim_id)
             return send_response(200, {"message": "Claim deleted successfully"})
 
         else:

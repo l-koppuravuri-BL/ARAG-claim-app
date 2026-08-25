@@ -18,9 +18,10 @@ def verify_token(auth_header):
 
     # Enable bypass for local development
     if os.environ.get("NODE_ENV") == "development" and token == "dev-token":
+        dev_email = "dev-user@example.com"
         return {
-            "userId": "dev-user@example.com",
-            "email": "dev-user@example.com",
+            "userId": dev_email,
+            "tenantId": ALLOWED_EMAILS[0] if ALLOWED_EMAILS else dev_email,
             "name": "Development User",
             "picture": ""
         }
@@ -38,7 +39,6 @@ def verify_token(auth_header):
             # Verify signature, expiration, and audience (handled by tokeninfo API)
             # We just need to check that the audience matches our client ID
             aud = data.get("aud")
-            # Google ID tokens can have 'aud' matching the client ID
             if aud != GOOGLE_CLIENT_ID:
                 raise ValueError("Token audience does not match GOOGLE_CLIENT_ID")
                 
@@ -50,9 +50,12 @@ def verify_token(auth_header):
             if ALLOWED_EMAILS and email not in ALLOWED_EMAILS:
                 raise PermissionError(f"Access denied for email: {email}")
                 
+            # Use the first whitelisted email as the tenantId partition key for shared family access
+            primary_tenant = ALLOWED_EMAILS[0] if ALLOWED_EMAILS else email
+                
             return {
                 "userId": email,
-                "email": email,
+                "tenantId": primary_tenant,
                 "name": data.get("name"),
                 "picture": data.get("picture")
             }

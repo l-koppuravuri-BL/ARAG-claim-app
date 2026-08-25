@@ -9,6 +9,10 @@ Parameters:
   AllowedEmails:
     Type: String
     Description: Comma-separated list of Gmail accounts authorized to log in
+  TenantMap:
+    Type: String
+    Default: ""
+    Description: Semicolon-and-comma separated mapping of tenantName:email1,email2
 
 Globals:
   Function:
@@ -72,6 +76,7 @@ Resources:
         Variables:
           GOOGLE_CLIENT_ID: !Ref GoogleClientId
           ALLOWED_EMAILS: !Ref AllowedEmails
+          TENANT_MAP: !Ref TenantMap
           CLAIMS_TABLE_NAME: !Ref ClaimsDatabase
           NODE_ENV: production
       Policies:
