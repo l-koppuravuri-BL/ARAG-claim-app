@@ -1,0 +1,15 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "arag-claims-tracker"
+resolve_s3 = true
+s3_prefix = "arag-claims-tracker"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "GoogleClientId=\"997954739848-fgla72dccagbrr2fnlv2ub8ofuhjskr1.apps.googleusercontent.com\" AllowedEmails=\"lk.koppuravuri@gmail.com,chilakala.haritha@gmail.com\""
+image_repositories = []
+
+[default.global.parameters]
+region = "eu-central-1"

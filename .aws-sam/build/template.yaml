@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Health Insurance Claims Tracker Serverless Backend
+Parameters:
+  GoogleClientId:
+    Type: String
+    Description: Google OAuth Client ID for JWT verification
+  AllowedEmails:
+    Type: String
+    Description: Comma-separated list of Gmail accounts authorized to log in
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Runtime: python3.12
+Resources:
+  ClaimsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: Claims
+      PrimaryKey:
+        Name: userId
+        Type: String
+  ClaimsDatabase:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ClaimsTable
+      AttributeDefinitions:
+      - AttributeName: userId
+        AttributeType: S
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: userId
+        KeyType: HASH
+      - AttributeName: id
+        KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+  ClaimsApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+        - '*'
+        AllowHeaders:
+        - Content-Type
+        - Authorization
+        AllowMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        MaxAge: 600
+  ClaimsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ClaimsFunction
+      Handler: index.handler
+      Environment:
+        Variables:
+          GOOGLE_CLIENT_ID:
+            Ref: GoogleClientId
+          ALLOWED_EMAILS:
+            Ref: AllowedEmails
+          CLAIMS_TABLE_NAME:
+            Ref: ClaimsDatabase
+          NODE_ENV: production
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ClaimsDatabase
+      Events:
+        ListOrCreateClaims:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: ClaimsApi
+            Path: /claims
+            Method: ANY
+        ClaimActions:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: ClaimsApi
+            Path: /claims/{id}
+            Method: ANY
+    Metadata:
+      SamResourceId: ClaimsFunction
+Outputs:
+  ApiUrl:
+    Description: API Gateway Endpoint URL
+    Value:
+      Fn::Sub: https://${ClaimsApi}.execute-api.${AWS::Region}.amazonaws.com

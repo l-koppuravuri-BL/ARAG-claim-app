@@ -1,0 +1,9 @@
+{
+  "name": "claims-tracker-backend",
+  "version": "1.0.0",
+  "description": "Serverless backend for health claims tracker",
+  "main": "index.js",
+  "dependencies": {
+    "google-auth-library": "^9.14.0"
+  }
+}

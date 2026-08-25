@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARAG Claims Tracker</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ================= AUTH SCREEN ================= -->
+  <div id="auth-screen" class="screen active">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <i class="fa-solid fa-shield-halved gold-glow"></i>
+        <h1>ARAG Tracker</h1>
+        <p>Manage & Analyze Health Insurance Claims</p>
+      </div>
+      
+      <div class="auth-info">
+        <p class="description">
+          A personal portal to log health expenditures, track approval statuses, monitor reimbursement rates, and view insurance adjuster feedback.
+        </p>
+        
+        <div class="features-list">
+          <div class="feature-item">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Reimbursement Analytics & Metrics</span>
+          </div>
+          <div class="feature-item">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+            <span>Detailed Cost Breakdown (Submitted vs. Approved)</span>
+          </div>
+          <div class="feature-item">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Claim Status Timeline & History</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Login Button Container -->
+      <div class="login-container">
+        <div id="google-login-btn"></div>
+        <p id="auth-error" class="auth-error-msg hidden"></p>
+        
+        <!-- Dev Login Option (only shows when running locally) -->
+        <button id="dev-login-btn" class="btn-dev hidden">
+          <i class="fa-solid fa-bug"></i> Skip to Development Dashboard
+        </button>
+      </div>
+      
+      <div class="auth-footer">
+        <p>Restricted to authorized accounts only.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= APP SCREEN ================= -->
+  <div id="app-screen" class="screen">
+    <!-- Navbar -->
+    <header class="main-header">
+      <div class="header-logo">
+        <i class="fa-solid fa-shield-halved gold-color"></i>
+        <span>ARAG Claims Tracker</span>
+      </div>
+      
+      <div class="header-actions">
+        <div class="user-profile">
+          <img id="user-avatar" src="" alt="Avatar" class="avatar">
+          <div class="user-info">
+            <span id="user-name" class="name">Guest User</span>
+            <span id="user-email" class="email">guest@example.com</span>
+          </div>
+        </div>
+        <button id="logout-btn" class="btn-icon" title="Log Out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="dashboard-content">
+      <!-- Welcome Header -->
+      <div class="welcome-section">
+        <div>
+          <h2>Your Insurance Dashboard</h2>
+          <p class="subtitle">Track approved portions, analyze claims, and see adjuster comments.</p>
+        </div>
+        <button id="open-add-modal-btn" class="btn btn-primary">
+          <i class="fa-solid fa-plus animate-plus"></i> New Claim
+        </button>
+      </div>
+
+      <!-- Stats Grid -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon bg-blue">
+            <i class="fa-solid fa-receipt"></i>
+          </div>
+          <div class="stat-value" id="stat-total-submitted">€0.00</div>
+          <div class="stat-label">Total Submitted</div>
+          <div class="stat-detail" id="stat-count-total">0 Claims Total</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon bg-green">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+          </div>
+          <div class="stat-value" id="stat-total-approved">€0.00</div>
+          <div class="stat-label">Total Reimbursed</div>
+          <div class="stat-detail" id="stat-rate-value">0% Rate</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon bg-amber">
+            <i class="fa-solid fa-hourglass-half"></i>
+          </div>
+          <div class="stat-value" id="stat-total-pending">€0.00</div>
+          <div class="stat-label">Pending Approval</div>
+          <div class="stat-detail" id="stat-count-pending">0 Pending Claims</div>
+        </div>
+        
+        <div class="stat-card progress-stat">
+          <div class="stat-icon bg-purple">
+            <i class="fa-solid fa-percent"></i>
+          </div>
+          <div class="stat-value" id="stat-reimbursement-rate">0.0%</div>
+          <div class="stat-label">Recovery Rate</div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="stat-progress-bar" style="width: 0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Search & Filters -->
+      <section class="filter-section">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="search-input" placeholder="Search by provider, description, number...">
+        </div>
+        
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-status="all">All</button>
+          <button class="filter-tab" data-status="Submitted">Submitted</button>
+          <button class="filter-tab" data-status="Approved">Approved</button>
+          <button class="filter-tab" data-status="Partially Approved">Partial</button>
+          <button class="filter-tab" data-status="Rejected">Rejected</button>
+          <button class="filter-tab" data-status="Pending Info">Pending Info</button>
+        </div>
+      </section>
+
+      <!-- Claims View -->
+      <section class="claims-section">
+        <div id="loading-spinner" class="loading-container hidden">
+          <div class="spinner"></div>
+          <p>Retrieving claims...</p>
+        </div>
+
+        <div id="empty-state" class="empty-container">
+          <i class="fa-solid fa-folder-open"></i>
+          <h3>No claims found</h3>
+          <p>Get started by logging your first insurance claim.</p>
+          <button id="empty-add-btn" class="btn btn-secondary">
+            <i class="fa-solid fa-plus"></i> Add Your First Claim
+          </button>
+        </div>
+
+        <!-- Claims Grid -->
+        <div id="claims-grid" class="claims-grid hidden">
+          <!-- Claims Cards inject here dynamically -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ================= ADD/EDIT CLAIM MODAL ================= -->
+  <div id="claim-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">New Claim Entry</h3>
+        <button class="close-btn" id="close-modal-btn">&times;</button>
+      </div>
+      
+      <form id="claim-form">
+        <input type="hidden" id="form-claim-id">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="form-claim-number">Claim / Invoice Number</label>
+            <input type="text" id="form-claim-number" placeholder="e.g. AR-98213" required>
+          </div>
+          <div class="form-group">
+            <label for="form-service-date">Service Date</label>
+            <input type="date" id="form-service-date" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="form-provider">Provider / Doctor</label>
+            <input type="text" id="form-provider" placeholder="e.g. Dr. Müller (Dentist)" required>
+          </div>
+          <div class="form-group">
+            <label for="form-submission-date">Submission Date</label>
+            <input type="date" id="form-submission-date" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="form-description">Description of Service</label>
+          <input type="text" id="form-description" placeholder="e.g. Routine dental cleanup and dental prophylaxis" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="form-amount-submitted">Amount Invoiced (€)</label>
+            <div class="input-currency">
+              <span>€</span>
+              <input type="number" id="form-amount-submitted" step="0.01" min="0" placeholder="0.00" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="form-status">Claim Status</label>
+            <select id="form-status" required>
+              <option value="Submitted">Submitted (Awaiting Review)</option>
+              <option value="Approved">Approved (Fully Reimbursed)</option>
+              <option value="Partially Approved">Partially Approved</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Pending Info">Pending Info (Awaiting input)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Conditional Approval Fields (toggled by JS based on status) -->
+        <div id="approval-details" class="form-expanded hidden">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="form-amount-approved">Amount Approved (€)</label>
+              <div class="input-currency">
+                <span>€</span>
+                <input type="number" id="form-amount-approved" step="0.01" min="0" placeholder="0.00">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="form-reimbursement-date">Reimbursement Date</label>
+              <input type="date" id="form-reimbursement-date">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="form-comments">Adjuster Comments / Reason</label>
+          <textarea id="form-comments" rows="3" placeholder="Enter notes, explanation of deductibles, or reasons for partial coverage..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-text" id="cancel-modal-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-claim-btn">
+            <i class="fa-solid fa-floppy-disk"></i> Save Claim
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= VIEW DETAILS MODAL ================= -->
+  <div id="details-modal" class="modal">
+    <div class="modal-content details-content">
+      <div class="modal-header">
+        <h3>Claim Specifications</h3>
+        <button class="close-btn" id="close-details-btn">&times;</button>
+      </div>
+      
+      <div class="details-body">
+        <div class="details-header-card">
+          <div class="details-claim-title">
+            <h4 id="detail-provider">Dr. Müller</h4>
+            <p id="detail-desc">Dental treatment</p>
+          </div>
+          <span id="detail-status" class="status-badge">Status</span>
+        </div>
+
+        <div class="details-grid">
+          <div class="detail-tile">
+            <span class="label">Claim Number</span>
+            <span class="value" id="detail-number">AR-12931</span>
+          </div>
+          <div class="detail-tile">
+            <span class="label">Service Date</span>
+            <span class="value" id="detail-service-date">2026-08-15</span>
+          </div>
+          <div class="detail-tile">
+            <span class="label">Submitted Date</span>
+            <span class="value" id="detail-submission-date">2026-08-16</span>
+          </div>
+          <div class="detail-tile">
+            <span class="label">Reimbursement Date</span>
+            <span class="value" id="detail-reimbursement-date">-</span>
+          </div>
+        </div>
+
+        <div class="cost-summary-box">
+          <div class="cost-item">
+            <span class="label">Total Invoiced Amount</span>
+            <span class="value total" id="detail-amount-submitted">€0.00</span>
+          </div>
+          <div class="cost-divider"></div>
+          <div class="cost-item">
+            <span class="label">Approved Reimbursement</span>
+            <span class="value approved" id="detail-amount-approved">€0.00</span>
+          </div>
+          <div class="cost-item short-item">
+            <span class="label">Uncovered Out-of-Pocket</span>
+            <span class="value out-of-pocket" id="detail-uncovered">€0.00</span>
+          </div>
+          
+          <div class="coverage-bar-container" id="detail-coverage-bar-container">
+            <div class="coverage-bar" id="detail-coverage-bar" style="width: 0%"></div>
+          </div>
+          <div class="coverage-ratio" id="detail-coverage-ratio">0% covered</div>
+        </div>
+
+        <div class="comments-card" id="detail-comments-container">
+          <div class="comments-header">
+            <i class="fa-solid fa-comment-dots"></i>
+            <span>Adjuster Notes / Remarks</span>
+          </div>
+          <p id="detail-comments" class="comments-text">No comments provided.</p>
+        </div>
+      </div>
+      
+      <div class="modal-footer details-footer">
+        <div class="left-actions">
+          <button id="detail-delete-btn" class="btn btn-danger-outline">
+            <i class="fa-solid fa-trash"></i> Delete Claim
+          </button>
+        </div>
+        <div>
+          <button id="detail-edit-btn" class="btn btn-secondary">
+            <i class="fa-solid fa-pen-to-square"></i> Edit
+          </button>
+          <button id="detail-close-btn" class="btn btn-primary">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
