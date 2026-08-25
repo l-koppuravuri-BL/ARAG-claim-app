@@ -16,7 +16,8 @@ const state = {
   activeFilter: "all",
   activePersonFilter: "all",
   searchQuery: "",
-  editingClaimId: null
+  editingClaimId: null,
+  viewMode: localStorage.getItem("claims_view_mode") || "grid"
 };
 
 // ================= DOM ELEMENTS =================
@@ -89,9 +90,13 @@ const el = {
   searchInput: document.getElementById("search-input"),
   filterTabs: document.querySelectorAll(".filter-tab"),
   filterPersonSelect: document.getElementById("filter-person-select"),
+  viewGridBtn: document.getElementById("view-grid-btn"),
+  viewTableBtn: document.getElementById("view-table-btn"),
   loadingSpinner: document.getElementById("loading-spinner"),
   emptyState: document.getElementById("empty-state"),
-  claimsGrid: document.getElementById("claims-grid")
+  claimsGrid: document.getElementById("claims-grid"),
+  claimsTableContainer: document.getElementById("claims-table-container"),
+  claimsTableBody: document.getElementById("claims-table-body")
 };
 
 // ================= APP INITIALIZATION =================
@@ -179,6 +184,29 @@ function setupEventListeners() {
     state.activePersonFilter = e.target.value;
     applyFilters();
   });
+
+  // View Toggle Buttons
+  el.viewGridBtn.addEventListener("click", () => {
+    setViewMode("grid");
+  });
+  el.viewTableBtn.addEventListener("click", () => {
+    setViewMode("table");
+  });
+}
+
+function setViewMode(mode) {
+  state.viewMode = mode;
+  localStorage.setItem("claims_view_mode", mode);
+  
+  if (mode === "grid") {
+    el.viewGridBtn.classList.add("active");
+    el.viewTableBtn.classList.remove("active");
+  } else {
+    el.viewGridBtn.classList.remove("active");
+    el.viewTableBtn.classList.add("active");
+  }
+  
+  applyFilters();
 }
 
 // ================= AUTHENTICATION FLOW =================
@@ -289,6 +317,15 @@ function showAppScreen() {
   el.userAvatar.src = state.user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
   el.userName.innerText = state.user.name;
   el.userEmail.innerText = state.user.email;
+
+  // Set active view mode toggle buttons
+  if (state.viewMode === "grid") {
+    el.viewGridBtn.classList.add("active");
+    el.viewTableBtn.classList.remove("active");
+  } else {
+    el.viewGridBtn.classList.remove("active");
+    el.viewTableBtn.classList.add("active");
+  }
 }
 
 // ================= API CALLS =================
@@ -419,17 +456,83 @@ function applyFilters() {
 
   if (filtered.length === 0) {
     el.claimsGrid.classList.add("hidden");
+    el.claimsTableContainer.classList.add("hidden");
     el.emptyState.classList.remove("hidden");
   } else {
     el.emptyState.classList.add("hidden");
-    el.claimsGrid.classList.remove("hidden");
-
-    el.claimsGrid.innerHTML = "";
-    filtered.forEach(claim => {
-      const card = createClaimCard(claim);
-      el.claimsGrid.appendChild(card);
-    });
+    
+    if (state.viewMode === "grid") {
+      el.claimsTableContainer.classList.add("hidden");
+      el.claimsGrid.classList.remove("hidden");
+      
+      el.claimsGrid.innerHTML = "";
+      filtered.forEach(claim => {
+        const card = createClaimCard(claim);
+        el.claimsGrid.appendChild(card);
+      });
+    } else {
+      el.claimsGrid.classList.add("hidden");
+      el.claimsTableContainer.classList.remove("hidden");
+      renderClaimsTable(filtered);
+    }
   }
+}
+
+function renderClaimsTable(claims) {
+  const tbody = el.claimsTableBody;
+  tbody.innerHTML = "";
+  
+  claims.forEach(claim => {
+    const tr = document.createElement("tr");
+    tr.dataset.id = claim.id;
+    
+    const statusClass = getStatusClass(claim.status);
+    const statusLabel = getStatusLabel(claim.status);
+    const submittedVal = parseFloat(claim.amountSubmitted || 0);
+    const approvedVal = parseFloat(claim.amountApproved || 0);
+    
+    tr.innerHTML = `
+      <td>${formatDate(claim.serviceDate)}</td>
+      <td class="table-provider">${claim.provider}</td>
+      <td>${claim.description || "-"}</td>
+      <td>${claim.insuredPerson || "Myself"}</td>
+      <td class="table-amount invoiced">${formatCurrency(submittedVal)}</td>
+      <td class="table-amount approved">${claim.status === "Approved" || claim.status === "Partially Approved" ? formatCurrency(approvedVal) : "-"}</td>
+      <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+      <td>
+        <div class="table-row-actions">
+          <button class="btn-icon table-edit-btn" title="Edit Claim">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn-icon table-delete-btn" title="Delete Claim" style="color: var(--danger-glow); color: var(--danger);">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    
+    // Row click opens details modal
+    tr.addEventListener("click", (e) => {
+      if (e.target.closest("button") || e.target.closest(".table-row-actions")) {
+        return;
+      }
+      openDetailsModal(claim);
+    });
+    
+    tr.querySelector(".table-edit-btn").onclick = (e) => {
+      e.stopPropagation();
+      openClaimModal(claim);
+    };
+    
+    tr.querySelector(".table-delete-btn").onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Are you sure you want to delete the claim for "${claim.provider}"?`)) {
+        handleDeleteClaim(claim.id);
+      }
+    };
+    
+    tbody.appendChild(tr);
+  });
 }
 
 function createClaimCard(claim) {
