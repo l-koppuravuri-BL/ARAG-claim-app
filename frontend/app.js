@@ -14,6 +14,7 @@ const state = {
   claims: [],
   filteredClaims: [],
   activeFilter: "all",
+  activePersonFilter: "all",
   searchQuery: "",
   editingClaimId: null
 };
@@ -51,6 +52,7 @@ const el = {
   formAmountApproved: document.getElementById("form-amount-approved"),
   formReimbursementDate: document.getElementById("form-reimbursement-date"),
   formComments: document.getElementById("form-comments"),
+  formInsuredPerson: document.getElementById("form-insured-person"),
   saveClaimBtn: document.getElementById("save-claim-btn"),
 
   detailsModal: document.getElementById("details-modal"),
@@ -73,6 +75,7 @@ const el = {
   detailCoverageRatio: document.getElementById("detail-coverage-ratio"),
   detailCommentsContainer: document.getElementById("detail-comments-container"),
   detailComments: document.getElementById("detail-comments"),
+  detailInsuredPerson: document.getElementById("detail-insured-person"),
 
   statTotalSubmitted: document.getElementById("stat-total-submitted"),
   statCountTotal: document.getElementById("stat-count-total"),
@@ -85,6 +88,7 @@ const el = {
 
   searchInput: document.getElementById("search-input"),
   filterTabs: document.querySelectorAll(".filter-tab"),
+  filterPersonSelect: document.getElementById("filter-person-select"),
   loadingSpinner: document.getElementById("loading-spinner"),
   emptyState: document.getElementById("empty-state"),
   claimsGrid: document.getElementById("claims-grid")
@@ -168,6 +172,12 @@ function setupEventListeners() {
       state.activeFilter = tab.dataset.status;
       applyFilters();
     });
+  });
+
+  // Filtering by Insured Person
+  el.filterPersonSelect.addEventListener("change", (e) => {
+    state.activePersonFilter = e.target.value;
+    applyFilters();
   });
 }
 
@@ -337,7 +347,46 @@ function getStatusClass(status) {
 }
 
 function renderClaims() {
+  updatePersonFilterOptions();
   applyFilters();
+}
+
+function updatePersonFilterOptions() {
+  const select = el.filterPersonSelect;
+  if (!select) return;
+  
+  const currentValue = state.activePersonFilter;
+  
+  // Extract unique patient names, defaulting to "Myself"
+  const people = new Set();
+  state.claims.forEach(c => {
+    people.add(c.insuredPerson || "Myself");
+  });
+  
+  // Re-build select options
+  select.innerHTML = `<option value="all">👪 All Family Members</option>`;
+  
+  Array.from(people).sort().forEach(person => {
+    const option = document.createElement("option");
+    option.value = person;
+    
+    let icon = "👤";
+    const nameLower = person.toLowerCase();
+    if (nameLower === "myself") icon = "👤";
+    else if (nameLower.includes("child") || nameLower.includes("kid") || nameLower === "leo" || nameLower === "lily") icon = "👶";
+    else if (nameLower.includes("spouse") || nameLower.includes("wife") || nameLower.includes("husband")) icon = "👥";
+    
+    option.innerText = `${icon} ${person}`;
+    select.appendChild(option);
+  });
+  
+  // Restore current value if still exists, otherwise reset to 'all'
+  if (people.has(currentValue)) {
+    select.value = currentValue;
+  } else {
+    state.activePersonFilter = "all";
+    select.value = "all";
+  }
 }
 
 function applyFilters() {
@@ -346,6 +395,11 @@ function applyFilters() {
   // Status Filter
   if (state.activeFilter !== "all") {
     filtered = filtered.filter(c => c.status === state.activeFilter);
+  }
+
+  // Insured Person Filter
+  if (state.activePersonFilter !== "all") {
+    filtered = filtered.filter(c => (c.insuredPerson || "Myself") === state.activePersonFilter);
   }
 
   // Search Filter
@@ -421,6 +475,10 @@ function createClaimCard(claim) {
       <div class="claim-meta-item">
         <i class="fa-solid fa-file-export"></i>
         <span>Sent: ${formatDate(claim.submissionDate)}</span>
+      </div>
+      <div class="claim-meta-item" title="Patient Name">
+        <i class="fa-solid fa-circle-user"></i>
+        <span>${claim.insuredPerson || "Myself"}</span>
       </div>
     </div>
     
@@ -534,6 +592,7 @@ function openClaimModal(claim = null) {
     el.formProvider.value = claim.provider || "";
     el.formSubmissionDate.value = claim.submissionDate ? claim.submissionDate.substring(0, 10) : "";
     el.formDescription.value = claim.description || "";
+    el.formInsuredPerson.value = claim.insuredPerson || "Myself";
     el.formAmountSubmitted.value = claim.amountSubmitted || "";
     el.formStatus.value = claim.status || "Submitted";
     el.formComments.value = claim.comments || "";
@@ -548,6 +607,7 @@ function openClaimModal(claim = null) {
   } else {
     el.modalTitle.innerText = "New Claim Entry";
     el.formClaimId.value = "";
+    el.formInsuredPerson.value = "Myself";
     el.approvalDetails.classList.add("hidden");
   }
 
@@ -578,6 +638,7 @@ function openDetailsModal(claim) {
   el.detailServiceDate.innerText = formatDate(claim.serviceDate);
   el.detailSubmissionDate.innerText = formatDate(claim.submissionDate);
   el.detailReimbursementDate.innerText = formatDate(claim.reimbursementDate);
+  el.detailInsuredPerson.innerText = claim.insuredPerson || "Myself";
 
   el.detailAmountSubmitted.innerText = formatCurrency(submittedVal);
 
@@ -647,6 +708,7 @@ async function handleFormSubmit(e) {
     provider: el.formProvider.value,
     submissionDate: el.formSubmissionDate.value,
     description: el.formDescription.value,
+    insuredPerson: el.formInsuredPerson.value || "Myself",
     amountSubmitted: subAmount,
     amountApproved: appAmount,
     status: status,

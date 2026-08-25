@@ -148,6 +148,12 @@
           <input type="text" id="search-input" placeholder="Search by provider, description, number...">
         </div>
         
+        <div class="filter-group">
+          <select id="filter-person-select" class="btn btn-secondary" style="padding: 10px 16px; font-weight: 600; border-radius: var(--radius-md); font-family: var(--font-display);">
+            <option value="all">👪 All Family Members</option>
+          </select>
+        </div>
+        
         <div class="filter-tabs">
           <button class="filter-tab active" data-status="all">All</button>
           <button class="filter-tab" data-status="Submitted">Submitted</button>
@@ -218,6 +224,17 @@
         <div class="form-group">
           <label for="form-description">Description of Service</label>
           <input type="text" id="form-description" placeholder="e.g. Routine dental cleanup and dental prophylaxis" required>
+        </div>
+
+        <div class="form-group">
+          <label for="form-insured-person">Insured Person (Patient)</label>
+          <input type="text" id="form-insured-person" list="insured-persons-list" placeholder="e.g. Myself, Lily, Leo" required>
+          <datalist id="insured-persons-list">
+            <option value="Myself"></option>
+            <option value="Spouse"></option>
+            <option value="Child 1"></option>
+            <option value="Child 2"></option>
+          </datalist>
         </div>
 
         <div class="form-row">
@@ -307,6 +324,10 @@
           <div class="detail-tile">
             <span class="label">Reimbursement Date</span>
             <span class="value" id="detail-reimbursement-date">-</span>
+          </div>
+          <div class="detail-tile">
+            <span class="label">Insured Person</span>
+            <span class="value" id="detail-insured-person">-</span>
           </div>
         </div>
 

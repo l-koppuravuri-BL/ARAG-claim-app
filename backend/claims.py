@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 TABLE_NAME = os.environ.get("CLAIMS_TABLE_NAME", "ClaimsTable")
 # Fallback to local DB if not in AWS Lambda environment or explicitly requested
-USE_LOCAL_DB = os.environ.get("USE_LOCAL_DB", "true").lower() == "true" or "AWS_REGION" not in os.environ
+USE_LOCAL_DB = os.environ.get("USE_LOCAL_DB", "false").lower() == "true" or "AWS_REGION" not in os.environ
 
 LOCAL_DB_PATH = os.path.join(os.path.dirname(__file__), "local_db.json")
 
