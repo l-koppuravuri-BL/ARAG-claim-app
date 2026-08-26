@@ -54,6 +54,8 @@ const el = {
   formReimbursementDate: document.getElementById("form-reimbursement-date"),
   formComments: document.getElementById("form-comments"),
   formInsuredPerson: document.getElementById("form-insured-person"),
+  formInsuredPersonCustomContainer: document.getElementById("form-insured-person-custom-container"),
+  formInsuredPersonCustom: document.getElementById("form-insured-person-custom"),
   saveClaimBtn: document.getElementById("save-claim-btn"),
 
   detailsModal: document.getElementById("details-modal"),
@@ -137,10 +139,10 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// Show dev login button if running on localhost
+// Show dev login button if running on localhost or locally from file
 function checkEnvironment() {
   const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.")) {
+  if (!host || host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.")) {
     el.devLoginBtn.classList.remove("hidden");
   }
 }
@@ -183,6 +185,19 @@ function setupEventListeners() {
   el.filterPersonSelect.addEventListener("change", (e) => {
     state.activePersonFilter = e.target.value;
     applyFilters();
+  });
+
+  // Insured Person form dropdown change (toggles custom name field)
+  el.formInsuredPerson.addEventListener("change", (e) => {
+    if (e.target.value === "_new") {
+      el.formInsuredPersonCustomContainer.classList.remove("hidden");
+      el.formInsuredPersonCustom.setAttribute("required", "required");
+      el.formInsuredPersonCustom.focus();
+    } else {
+      el.formInsuredPersonCustomContainer.classList.add("hidden");
+      el.formInsuredPersonCustom.value = "";
+      el.formInsuredPersonCustom.removeAttribute("required");
+    }
   });
 
   // View Toggle Buttons
@@ -335,6 +350,49 @@ async function fetchClaims() {
   el.emptyState.classList.add("hidden");
 
   try {
+    if (state.token === "dev-token") {
+      let mockClaims = localStorage.getItem("mock_claims");
+      if (!mockClaims) {
+        const initialMock = [
+          {
+            id: "mock-1",
+            claimNumber: "CL-9872",
+            serviceDate: "2026-08-20T00:00:00Z",
+            provider: "Dr. Smith (Dentist)",
+            submissionDate: "2026-08-21T00:00:00Z",
+            description: "Dental clean up and cavity filling",
+            insuredPerson: "Spouse",
+            amountSubmitted: 150.00,
+            amountApproved: 120.00,
+            status: "Partially Approved",
+            reimbursementDate: "2026-08-25T00:00:00Z",
+            comments: "Partially approved because dental hygiene limit was exceeded."
+          },
+          {
+            id: "mock-2",
+            claimNumber: "CL-5432",
+            serviceDate: "2026-08-15T00:00:00Z",
+            provider: "Apotheke am Tor",
+            submissionDate: "2026-08-16T00:00:00Z",
+            description: "Prescription medication",
+            insuredPerson: "Myself",
+            amountSubmitted: 45.50,
+            amountApproved: 45.50,
+            status: "Approved",
+            reimbursementDate: "2026-08-18T00:00:00Z",
+            comments: ""
+          }
+        ];
+        localStorage.setItem("mock_claims", JSON.stringify(initialMock));
+        state.claims = initialMock;
+      } else {
+        state.claims = JSON.parse(mockClaims);
+      }
+      renderClaims();
+      renderStats();
+      return;
+    }
+
     const res = await fetch(`${CONFIG.API_BASE}/claims`, {
       headers: { "Authorization": `Bearer ${state.token}` }
     });
@@ -386,6 +444,37 @@ function getStatusClass(status) {
 function renderClaims() {
   updatePersonFilterOptions();
   applyFilters();
+}
+
+function populateInsuredPersonDropdown() {
+  const select = el.formInsuredPerson;
+  if (!select) return;
+
+  // Extract unique patient names, starting with defaults
+  const members = new Set(["Myself", "Spouse", "Child 1", "Child 2"]);
+  if (state.claims && Array.isArray(state.claims)) {
+    state.claims.forEach(c => {
+      if (c.insuredPerson) {
+        members.add(c.insuredPerson);
+      }
+    });
+  }
+
+  // Re-build select options
+  select.innerHTML = "";
+  
+  Array.from(members).sort().forEach(member => {
+    const option = document.createElement("option");
+    option.value = member;
+    option.innerText = member;
+    select.appendChild(option);
+  });
+
+  // Add the custom name option
+  const customOption = document.createElement("option");
+  customOption.value = "_new";
+  customOption.innerText = "➕ Add New Family Member...";
+  select.appendChild(customOption);
 }
 
 function updatePersonFilterOptions() {
@@ -682,6 +771,12 @@ function openClaimModal(claim = null) {
   state.editingClaimId = claim ? claim.id : null;
   el.claimForm.reset();
 
+  // Populate dynamic dropdown and reset custom input state
+  populateInsuredPersonDropdown();
+  el.formInsuredPersonCustomContainer.classList.add("hidden");
+  el.formInsuredPersonCustom.value = "";
+  el.formInsuredPersonCustom.removeAttribute("required");
+
   // Set defaults for Dates (today)
   const today = new Date().toISOString().substring(0, 10);
   el.formServiceDate.value = today;
@@ -695,7 +790,17 @@ function openClaimModal(claim = null) {
     el.formProvider.value = claim.provider || "";
     el.formSubmissionDate.value = claim.submissionDate ? claim.submissionDate.substring(0, 10) : "";
     el.formDescription.value = claim.description || "";
-    el.formInsuredPerson.value = claim.insuredPerson || "Myself";
+    
+    const person = claim.insuredPerson || "Myself";
+    const exists = Array.from(el.formInsuredPerson.options).some(opt => opt.value === person);
+    if (!exists) {
+      const opt = document.createElement("option");
+      opt.value = person;
+      opt.innerText = person;
+      el.formInsuredPerson.insertBefore(opt, el.formInsuredPerson.lastChild);
+    }
+    el.formInsuredPerson.value = person;
+
     el.formAmountSubmitted.value = claim.amountSubmitted || "";
     el.formStatus.value = claim.status || "Submitted";
     el.formComments.value = claim.comments || "";
@@ -805,13 +910,24 @@ async function handleFormSubmit(e) {
     appAmount = subAmount; // default to 100%
   }
 
+  let insuredPersonName = el.formInsuredPerson.value;
+  if (insuredPersonName === "_new") {
+    insuredPersonName = el.formInsuredPersonCustom.value.trim();
+    if (!insuredPersonName) {
+      alert("Please enter a custom family member name.");
+      return;
+    }
+  } else if (!insuredPersonName) {
+    insuredPersonName = "Myself";
+  }
+
   const claimData = {
     claimNumber: el.formClaimNumber.value,
     serviceDate: el.formServiceDate.value,
     provider: el.formProvider.value,
     submissionDate: el.formSubmissionDate.value,
     description: el.formDescription.value,
-    insuredPerson: el.formInsuredPerson.value || "Myself",
+    insuredPerson: insuredPersonName,
     amountSubmitted: subAmount,
     amountApproved: appAmount,
     status: status,
@@ -824,6 +940,41 @@ async function handleFormSubmit(e) {
 
   try {
     const isEdit = !!state.editingClaimId;
+    
+    if (state.token === "dev-token") {
+      let mockClaims = JSON.parse(localStorage.getItem("mock_claims") || "[]");
+      let saved;
+      if (isEdit) {
+        saved = {
+          ...mockClaims.find(c => c.id === state.editingClaimId),
+          ...claimData,
+          id: state.editingClaimId,
+          updatedAt: new Date().toISOString()
+        };
+        mockClaims = mockClaims.map(c => c.id === state.editingClaimId ? saved : c);
+      } else {
+        saved = {
+          ...claimData,
+          id: `mock-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        mockClaims.push(saved);
+      }
+      localStorage.setItem("mock_claims", JSON.stringify(mockClaims));
+      
+      if (isEdit) {
+        state.claims = state.claims.map(c => c.id === saved.id ? saved : c);
+      } else {
+        state.claims.push(saved);
+      }
+      
+      renderClaims();
+      renderStats();
+      closeClaimModal();
+      return;
+    }
+
     const url = isEdit
       ? `${CONFIG.API_BASE}/claims/${state.editingClaimId}`
       : `${CONFIG.API_BASE}/claims`;
@@ -861,6 +1012,18 @@ async function handleFormSubmit(e) {
 
 async function handleDeleteClaim(id) {
   try {
+    if (state.token === "dev-token") {
+      let mockClaims = JSON.parse(localStorage.getItem("mock_claims") || "[]");
+      mockClaims = mockClaims.filter(c => c.id !== id);
+      localStorage.setItem("mock_claims", JSON.stringify(mockClaims));
+
+      state.claims = state.claims.filter(c => c.id !== id);
+      renderClaims();
+      renderStats();
+      closeDetailsModal();
+      return;
+    }
+
     const res = await fetch(`${CONFIG.API_BASE}/claims/${id}`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${state.token}` }

@@ -258,13 +258,13 @@
 
         <div class="form-group">
           <label for="form-insured-person">Insured Person (Patient)</label>
-          <input type="text" id="form-insured-person" list="insured-persons-list" placeholder="e.g. Myself, Lily, Leo" required>
-          <datalist id="insured-persons-list">
-            <option value="Myself"></option>
-            <option value="Spouse"></option>
-            <option value="Child 1"></option>
-            <option value="Child 2"></option>
-          </datalist>
+          <select id="form-insured-person" required>
+            <!-- Will be dynamically populated via Javascript -->
+          </select>
+          <div id="form-insured-person-custom-container" class="hidden" style="margin-top: 10px; animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+            <label for="form-insured-person-custom" style="font-size: 0.75rem; margin-bottom: 4px;">Custom Family Member Name</label>
+            <input type="text" id="form-insured-person-custom" placeholder="e.g. Grandma, Leo, Lily">
+          </div>
         </div>
 
         <div class="form-row">
