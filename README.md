@@ -6,6 +6,17 @@ Designed specifically to address limitations in standard insurance apps, this po
 
 ---
 
+## 📚 Application Documentation
+
+We have prepared comprehensive guides to help you understand the architecture, codebase, AWS cloud configuration, and how to manage the resources via the CLI:
+
+*   **[System Architecture](file:///c:/Users/l.koppuravuri/.gemini/antigravity-ide/scratch/arag-claims-tracker/docs/architecture.md)**: System design explanation and a visual component diagram.
+*   **[Codebase Walkthrough](file:///c:/Users/l.koppuravuri/.gemini/antigravity-ide/scratch/arag-claims-tracker/docs/codebase.md)**: Walkthrough of the code structure, file responsibilities, and external dependencies with Java analogies.
+*   **[AWS Resources & IaC](file:///c:/Users/l.koppuravuri/.gemini/antigravity-ide/scratch/arag-claims-tracker/docs/aws_resources.md)**: Cloud resources description (SAM/CloudFormation details) and hosting suggestions.
+*   **[AWS CLI & Console Guide](file:///c:/Users/l.koppuravuri/.gemini/antigravity-ide/scratch/arag-claims-tracker/docs/aws_cli_guide.md)**: A step-by-step CLI setup guide, database operations, console UI navigation, and teardown instructions.
+
+---
+
 ## Architecture Overview
 
 1. **Frontend**: A high-performance, single-page application built using vanilla HTML, ES6 JavaScript, and custom modern CSS. It has no build dependencies or heavy framework installation requirements, and features a gorgeous dark-theme dashboard.
